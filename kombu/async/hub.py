@@ -314,8 +314,9 @@ class Hub(object):
                                               writers.get(fileno))
                             except TypeError:
                                 pass
-                    except (KeyError, Empty):
+                    except (KeyError, Empty) as exc:
                         hub_remove(fileno)
+                        logger.error('%s while getting callback in Hub. event=%s. fileno=%s', exc, event, fileno)
                         continue
                     if cb is None:
                         continue
@@ -325,11 +326,13 @@ class Hub(object):
                         except OSError as exc:
                             if get_errno(exc) != errno.EBADF:
                                 raise
+                            logger.error('%s while moving callback in Hub. event=%s. fileno=%s', exc, event, fileno)
                             hub_remove(fileno)
-                        except StopIteration:
-                            pass
-                        except Exception:
+                        except StopIteration as exc:
+                            logger.error('%s while moving callback in Hub. event=%s. fileno=%s', exc, event, fileno)
+                        except Exception as exc:
                             hub_remove(fileno)
+                            logger.error('%s while moving callback in Hub. event=%s. fileno=%s', exc, event, fileno)
                             raise
                     else:
                         try:
