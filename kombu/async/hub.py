@@ -164,6 +164,23 @@ class Hub(object):
         return min(max(delay or 0, min_delay), max_delay)
 
     def add(self, fd, callback, flags, args=(), consolidate=False):
+        fd = fileno(fd)
+        if fd in self.readers:
+            old_callback, old_args = self.readers[fd]
+            old_name, name = old_callback.__name__, callback.__name__
+            if old_name != name or args != old_args:
+                logger.warning(
+                    "Fd %s is already in Hub's readers ! Old CB %s%s != New CB %s%s.",
+                    fd, old_callback, old_args, callback, args
+                )
+        if fd in self.writers:
+            old_callback, old_args = self.writers[fd]
+            old_name, name = old_callback.__name__, callback.__name__
+            if old_name != name or args != old_args:
+                logger.warning(
+                    "Fd %s is already in Hub's writers ! Old CB %s%s != New CB %s%s.",
+                    fd, old_callback, old_args, callback, args
+                )
         try:
             self.poller.register(fd, flags)
         except ValueError:
@@ -173,9 +190,9 @@ class Hub(object):
             dest = self.readers if flags & READ else self.writers
             if consolidate:
                 self.consolidate.add(fd)
-                dest[fileno(fd)] = None
+                dest[fd] = None
             else:
-                dest[fileno(fd)] = callback, args
+                dest[fd] = callback, args
 
     def remove(self, fd):
         fd = fileno(fd)
